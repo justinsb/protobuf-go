@@ -224,9 +224,9 @@ func fieldInfoForScalar(fd pref.FieldDescriptor, fs reflect.StructField, x expor
 	nullable := fd.HasPresence()
 	isBytes := ft.Kind() == reflect.Slice && ft.Elem().Kind() == reflect.Uint8
 	if nullable {
-		if ft.Kind() != reflect.Ptr && ft.Kind() != reflect.Slice {
-			panic(fmt.Sprintf("field %v has invalid type: got %v, want pointer", fd.FullName(), ft))
-		}
+		// if ft.Kind() != reflect.Ptr && ft.Kind() != reflect.Slice {
+		// 	panic(fmt.Sprintf("field %v has invalid type: got %v, want pointer", fd.FullName(), ft))
+		// }
 		if ft.Kind() == reflect.Ptr {
 			ft = ft.Elem()
 		}
@@ -243,7 +243,7 @@ func fieldInfoForScalar(fd pref.FieldDescriptor, fs reflect.StructField, x expor
 			}
 			rv := p.Apply(fieldOffset).AsValueOf(fs.Type).Elem()
 			if nullable {
-				return !rv.IsNil()
+				return !isNil(rv)
 			}
 			switch rv.Kind() {
 			case reflect.Bool:
@@ -270,7 +270,7 @@ func fieldInfoForScalar(fd pref.FieldDescriptor, fs reflect.StructField, x expor
 			}
 			rv := p.Apply(fieldOffset).AsValueOf(fs.Type).Elem()
 			if nullable {
-				if rv.IsNil() {
+				if isNil(rv) {
 					return conv.Zero()
 				}
 				if rv.Kind() == reflect.Ptr {
@@ -375,6 +375,16 @@ func fieldInfoForWeakMessage(fd pref.FieldDescriptor, weakOffset offset) fieldIn
 	}
 }
 
+func isNil(v reflect.Value) bool {
+	switch v.Kind() {
+	case reflect.Map, reflect.Ptr, reflect.UnsafePointer, reflect.Slice, reflect.Interface:
+		return v.IsNil()
+
+	default:
+		return false
+	}
+}
+
 func fieldInfoForMessage(fd pref.FieldDescriptor, fs reflect.StructField, x exporter) fieldInfo {
 	ft := fs.Type
 	conv := NewConverter(ft, fd)
@@ -388,7 +398,7 @@ func fieldInfoForMessage(fd pref.FieldDescriptor, fs reflect.StructField, x expo
 				return false
 			}
 			rv := p.Apply(fieldOffset).AsValueOf(fs.Type).Elem()
-			return !rv.IsNil()
+			return !isNil(rv)
 		},
 		clear: func(p pointer) {
 			rv := p.Apply(fieldOffset).AsValueOf(fs.Type).Elem()
