@@ -22,7 +22,7 @@ import (
 )
 
 // legacyWrapMessage wraps v as a protoreflect.Message,
-// where v must be a *struct kind and not implement the v2 API already.
+// where v must be a (*)struct kind and not implement the v2 API already.
 func legacyWrapMessage(v reflect.Value) pref.Message {
 	typ := v.Type()
 	// Tolerate []Msg instead of []*Msg
@@ -41,7 +41,7 @@ func legacyWrapMessage(v reflect.Value) pref.Message {
 // where t must be not implement the v2 API already.
 // The provided name is used if it cannot be determined from the message.
 func legacyLoadMessageType(t reflect.Type, name pref.FullName) protoreflect.MessageType {
-	if t.Kind() != reflect.Ptr || t.Elem().Kind() != reflect.Struct {
+	if t.Kind() != reflect.Struct && (t.Kind() != reflect.Ptr || t.Elem().Kind() != reflect.Struct) {
 		return aberrantMessageType{t}
 	}
 	return legacyLoadMessageInfo(t, name)
@@ -50,7 +50,7 @@ func legacyLoadMessageType(t reflect.Type, name pref.FullName) protoreflect.Mess
 var legacyMessageTypeCache sync.Map // map[reflect.Type]*MessageInfo
 
 // legacyLoadMessageInfo dynamically loads a *MessageInfo for t,
-// where t must be a *struct kind and not implement the v2 API already.
+// where t must be a *struct kind (or struct kind) and not implement the v2 API already.
 // The provided name is used if it cannot be determined from the message.
 func legacyLoadMessageInfo(t reflect.Type, name pref.FullName) *MessageInfo {
 	// Fast-path: check if a MessageInfo is cached for this concrete type.
@@ -188,13 +188,17 @@ func aberrantLoadMessageDescReentrant(t reflect.Type, name pref.FullName) pref.M
 	md.L0.ParentFile = filedesc.SurrogateProto2
 	aberrantMessageDescCache[t] = md
 
-	if t.Kind() != reflect.Ptr || t.Elem().Kind() != reflect.Struct {
-		return md
+	tElem := t
+	if t.Kind() != reflect.Struct {
+		if t.Kind() != reflect.Ptr || t.Elem().Kind() != reflect.Struct {
+			return md
+		}
+		tElem = t.Elem()
 	}
 
 	// Try to determine if the message is using proto3 by checking scalars.
-	for i := 0; i < t.Elem().NumField(); i++ {
-		f := t.Elem().Field(i)
+	for i := 0; i < tElem.NumField(); i++ {
+		f := tElem.Field(i)
 		if tag := f.Tag.Get("protobuf"); tag != "" {
 			switch f.Type.Kind() {
 			case reflect.Bool, reflect.Int32, reflect.Int64, reflect.Uint32, reflect.Uint64, reflect.Float32, reflect.Float64, reflect.String:
@@ -236,8 +240,8 @@ func aberrantLoadMessageDescReentrant(t reflect.Type, name pref.FullName) pref.M
 	}
 
 	// Derive the message fields by inspecting the struct fields.
-	for i := 0; i < t.Elem().NumField(); i++ {
-		f := t.Elem().Field(i)
+	for i := 0; i < tElem.NumField(); i++ {
+		f := tElem.Field(i)
 		if tag := f.Tag.Get("protobuf"); tag != "" {
 			tagKey := f.Tag.Get("protobuf_key")
 			tagVal := f.Tag.Get("protobuf_val")

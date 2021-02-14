@@ -82,10 +82,12 @@ func (mi *MessageInfo) initOnce() {
 	}
 
 	t := mi.GoReflectType
-	if t.Kind() != reflect.Ptr && t.Elem().Kind() != reflect.Struct {
-		panic(fmt.Sprintf("got %v, want *struct kind", t))
+	if t.Kind() != reflect.Struct {
+		if t.Kind() != reflect.Ptr && t.Elem().Kind() != reflect.Struct {
+			panic(fmt.Sprintf("got %v, want *struct kind", t))
+		}
+		t = t.Elem()
 	}
-	t = t.Elem()
 
 	si := mi.makeStructInfo(t)
 	mi.makeReflectFuncs(t, si)

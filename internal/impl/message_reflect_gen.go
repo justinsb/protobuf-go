@@ -9,6 +9,7 @@ package impl
 import (
 	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/runtime/protoiface"
+	"reflect"
 )
 
 func (m *messageState) Descriptor() protoreflect.MessageDescriptor {
@@ -144,7 +145,12 @@ func (m *messageReflectWrapper) Interface() protoreflect.ProtoMessage {
 	return (*messageIfaceWrapper)(m)
 }
 func (m *messageReflectWrapper) protoUnwrap() interface{} {
-	return m.pointer().AsIfaceOf(m.messageInfo().GoReflectType.Elem())
+	// This file is generated so this code needs better home.
+	if m.messageInfo().GoReflectType.Kind() == reflect.Ptr {
+		return m.pointer().AsIfaceOf(m.messageInfo().GoReflectType.Elem())
+	} else {
+		return m.pointer().AsIfaceOf(m.messageInfo().GoReflectType)
+	}
 }
 func (m *messageReflectWrapper) ProtoMethods() *protoiface.Methods {
 	m.messageInfo().init()
