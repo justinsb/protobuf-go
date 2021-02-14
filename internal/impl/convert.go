@@ -426,6 +426,10 @@ func (c *messageConverter) PBValueOf(v reflect.Value) pref.Value {
 	if m, ok := v.Interface().(pref.ProtoMessage); ok {
 		return pref.ValueOfMessage(m.ProtoReflect())
 	}
+	// COULD ALSO DO THE STRUCT => PTR STRUCT CONVERSION HERE
+	// if v.Kind() == reflect.Struct {
+	// 	return pref.ValueOfMessage(legacyWrapMessage(v.Addr()))
+	// }
 	return pref.ValueOfMessage(legacyWrapMessage(v))
 }
 
